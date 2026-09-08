@@ -22,8 +22,8 @@ Thumbs.db
 # *.xlsx
 
 # Client data
-TeamE/hub_hub_smart_sheet_crosswalk.csv
-TeamE/HUB_Crosswalk_20251001.xlsx
-TeamE/HUB_Crosswalks/
-TeamE/division_plan_config.xlsx
+HUB/hub_hub_smart_sheet_crosswalk.csv
+HUB/HUB_Crosswalk_20251001.xlsx
+HUB/HUB_Crosswalks/
+HUB/division_plan_config.xlsx
 Requirements/
