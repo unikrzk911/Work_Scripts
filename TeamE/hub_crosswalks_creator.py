@@ -3,12 +3,17 @@ from utils import save_as_csv
 
 #################################################### Hansen Fruit######################################################
 
-save_path = 'C:/Users/u1218516/Documents/CGT Files/Other teams/Team E/RCD Sales/'
+# Only the parent folder goes here; the client-specific subfolder is created automatically
+# from group_name below.
+parent_save_path = 'C:/Users/lenovo/OneDrive/Documents/CGT Files/Team E/'
 file_prefix = 'hub_hbi_rcdsales_anthem'
 
 match_field = 'L09058'
 group_id = '4064345'
 group_name = 'RCD SALES'
+
+# Client-specific subfolder, named after the group, under the given parent folder
+save_path = f'{parent_save_path}{group_name}/'
 
 division_ids = ['L09058M001','L09058MS01','L09058M002','L09058MS02','L09058M003','L09058MS03','L09058M004','L09058MS04']
 division_names = ['ACTIVE (A)','COBRA (C)','ACTIVE (A)','COBRA (C)','ACTIVE (A)','COBRA (C)','ACTIVE (A)','COBRA (C)']

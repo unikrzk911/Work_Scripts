@@ -5,17 +5,25 @@ from utils import save_as_csv
 
 
 ############################### First Priority, Inc. ##############################################
-save_path = 'C:/Users/u1218516/Documents/CGT Files/Other teams/'
+# Only the parent folder goes here; the client-specific subfolder is created automatically
+# from ins_emp_group_name below.
+parent_save_path = 'C:/Users/lenovo/OneDrive/Documents/CGT Files/Team E/'
 cw_name = 'hub_hbi_rcdsales_anthem_grouplevel_crosswalk.csv'
 group_name = "RCD SALES"
 src_group_identifier = 'L09058'
+
+# Client-specific subfolder, named after the group, under the given parent folder
+save_path = f"{parent_save_path}{group_name}/"
 ##########################################################################################
 
 
 
 # Read data
-input_file_path = 'C:/Users/u1218516/Documents/CGT Files/Other teams/HUB/MasterCW/hub_hub_smart_sheet_crosswalk.csv'
-src_data = pd.read_csv(input_file_path, delimiter=',', skiprows=0)
+# engine='python' + on_bad_lines='warn': a handful of rows in this export have unescaped
+# commas in free-text fields (dates, dollar amounts) that desync the column count; skip
+# those rows (with a warning) rather than letting the whole read blow up.
+input_file_path = Path(__file__).parent / 'hub_hub_smart_sheet_crosswalk.csv'
+src_data = pd.read_csv(input_file_path, delimiter=',', skiprows=0, engine='python', on_bad_lines='warn')
 
 # Filter data for the specific client name
 client_data = src_data[src_data['Client Name'].str.upper() == group_name.upper()].drop_duplicates()
