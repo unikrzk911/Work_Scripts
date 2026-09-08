@@ -1,0 +1,4 @@
+pandas
+redshift_connector
+psycopg2-binary
+python-dotenv
