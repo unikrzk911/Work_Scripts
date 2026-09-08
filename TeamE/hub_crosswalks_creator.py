@@ -1,10 +1,10 @@
+from pathlib import Path
 import pandas as pd
 from utils import save_as_csv
 
 #################################################### Hansen Fruit######################################################
 
-# Only the parent folder goes here; the client-specific subfolder is created automatically
-# from group_name below.
+# Only the parent folder goes here; the client-specific subfolder is created automatically from group_name below.
 parent_save_path = 'C:/Users/lenovo/OneDrive/Documents/CGT Files/Team E/'
 file_prefix = 'hub_hbi_rcdsales_anthem'
 
@@ -15,13 +15,21 @@ group_name = 'RCD SALES'
 # Client-specific subfolder, named after the group, under the given parent folder
 save_path = f'{parent_save_path}{group_name}/'
 
-division_ids = ['L09058M001','L09058MS01','L09058M002','L09058MS02','L09058M003','L09058MS03','L09058M004','L09058MS04']
-division_names = ['ACTIVE (A)','COBRA (C)','ACTIVE (A)','COBRA (C)','ACTIVE (A)','COBRA (C)','ACTIVE (A)','COBRA (C)']
-employee_status = ['Active','Cobra','Active','Cobra','Active','Cobra','Active','Cobra']
+# Division and plan lists come from an Excel file instead of being typed in here.
+# Expected workbook layout:
+#   'Divisions' sheet: division_id | division_name | employee_status
+#   'Plans' sheet:     plan_id | plan_description | plan_type
+division_plan_config_path = Path(__file__).parent / 'division_plan_config.xlsx'
 
-plan_ids = ['L09058M001','L09058MS01','L09058M002','L09058MS02','L09058M003','L09058MS03','L09058M004','L09058MS04']
-plan_descriptions = ['Anthem Blue Access PPO Option 12 with Rx Option T2','Anthem Blue Access PPO Option 12 with Rx Option T2','Anthem Blue Access PPO Option 25 with Rx Option T2','Anthem Blue Access PPO Option 25 with Rx Option T2','Anthem Blue Access PPO Option 26 with Rx Option T2','Anthem Blue Access PPO Option 26 with Rx Option T2','Stop Loss (Standalone)','Stop Loss (Standalone)']
-plan_types = ['PPO','PPO','PPO','PPO','PPO','PPO','PPO','PPO']
+divisions_df = pd.read_excel(division_plan_config_path, sheet_name='Divisions')
+division_ids = divisions_df['division_id'].tolist()
+division_names = divisions_df['division_name'].tolist()
+employee_status = divisions_df['employee_status'].tolist()
+
+plans_df = pd.read_excel(division_plan_config_path, sheet_name='Plans')
+plan_ids = plans_df['plan_id'].tolist()
+plan_descriptions = plans_df['plan_description'].tolist()
+plan_types = plans_df['plan_type'].tolist()
 
 has_same_plan_division_id = True
 
@@ -44,13 +52,6 @@ plan_filename = file_prefix + '_plancrosswalk_01012026.csv'
 division_filename = file_prefix + '_divisioncrosswalk_01012026.csv'
 employee_status_filename = file_prefix + '_employeestatuscrosswalk_01012026.csv'
 loa_filename = file_prefix + '_loacrosswalk_01012026.csv'
-
-if len(division_ids) != len(division_names):
-    raise ValueError("Division lists must have the same number of elements")
-
-if len(plan_ids) != len(plan_descriptions):
-    if len(plan_descriptions) != len(plan_types):
-        raise ValueError("Plan lists must have the same number of elements")
 
 ################################################### Plan Crosswalk ####################################################
 plan_crosswalk = pd.DataFrame({

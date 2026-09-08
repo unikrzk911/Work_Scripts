@@ -27,8 +27,7 @@ def execute_on_all_dbs(sql_script, db_list):
             if 'conn' in locals():
                 conn.close()
 
-sql_file_path = os.environ.get('SQL_FILE_PATH', ''
-                                                '')
+sql_file_path = os.environ.get('SQL_FILE_PATH', '')
 
 db_names = [
     "a", "actuarial", "actuary", "b", "c", "cbh", "d", "da", "dba", "dev", "devims",
