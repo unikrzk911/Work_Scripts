@@ -1,6 +1,6 @@
 # Work Scripts
 
-A collection of one-off Python utilities for working with Redshift/PostgreSQL databases and building crosswalk/reference files for client data feeds.
+A collection of personal helper scripts I use for office work — running SQL across Redshift databases, combining exported text files, and generating client crosswalk CSVs for data feeds.
 
 ## Structure
 
