@@ -1,21 +1,21 @@
 import csv
 import os
+from pathlib import Path
+
 import pandas as pd
 import redshift_connector
 from dotenv import load_dotenv
-from pathlib import Path
 
 load_dotenv()
 
 
 def get_data(database, query):
-    # Establish the connection to the Redshift database
     conn = redshift_connector.connect(
         user=os.environ['REDSHIFT_USER'],
         password=os.environ['REDSHIFT_PASSWORD'],
         host=os.environ['REDSHIFT_HOST'],
         port=int(os.environ.get('REDSHIFT_PORT', 5439)),
-        database=database
+        database=database,
     )
     cursor = conn.cursor()
     print("Connection established")
@@ -24,30 +24,28 @@ def get_data(database, query):
         cursor.execute(query)
         result = cursor.fetchall()
         column_names = [desc[0] for desc in cursor.description]
-
     finally:
         cursor.close()
         conn.close()
 
-    df = pd.DataFrame(result, columns=column_names)
     print("All data fetched")
-    # save_as_csv(df, '', 'query_data.csv', '|', get_data=True)
-    return df
+    return pd.DataFrame(result, columns=column_names)
 
 
-
-def save_as_csv(df, path, filename, delimiter, quotchar=False, get_data=False):
+def save_as_csv(df, path, filename, delimiter, quote_all=False, is_temp_file=False):
     output_dir = Path(path)
     output_dir.mkdir(parents=True, exist_ok=True)
-    path = path + filename
-    if quotchar:
-        df.to_csv(path, sep=delimiter, index=False, quotechar='"', quoting=csv.QUOTE_ALL)
+    output_path = output_dir / filename
+
+    if quote_all:
+        df.to_csv(output_path, sep=delimiter, index=False, quotechar='"', quoting=csv.QUOTE_ALL)
     else:
-        df.to_csv(path, sep=delimiter, index=False)
-    if get_data:
-        print(f'File temporarily saved to location: {path}')
+        df.to_csv(output_path, sep=delimiter, index=False)
+
+    if is_temp_file:
+        print(f'File temporarily saved to location: {output_path}')
     else:
-        print(f'{filename} saved to location: {path}')
+        print(f'{filename} saved to location: {output_path}')
 
 
 def combine_csvs(csv_files, out_path=None, read_sep=",", write_sep="|", add_source_cols=False):
@@ -58,8 +56,8 @@ def combine_csvs(csv_files, out_path=None, read_sep=",", write_sep="|", add_sour
     for file in csv_files:
         df = pd.read_csv(file, sep=read_sep, dtype=str)
         if add_source_cols:
-            df["__source_file"] = os.path.basename(file)  # just the filename
-            df["__source_path"] = file  # full path
+            df["__source_file"] = os.path.basename(file)
+            df["__source_path"] = file
         df_list.append(df)
 
     combined_df = pd.concat(df_list, ignore_index=True)
