@@ -18,20 +18,23 @@ FILTER_FIELD = "ins_emp_group_name"
 REF_MONTHS = 60  # months in Ref_table_5year (cycle-end month + 59 before it)
 
 
-def member_month_generate(cycle_end_date, schema, ins_emp_group_name, dental_exists, vision_exists):
+def member_month_generate(cycle_end_date, schema, dental_exists, vision_exists, ins_emp_group_name=""):
     """
-    cycle_end_date  e.g. '2026-08-31'
-    schema          target schema, e.g. 'raw_client_202609'
-    ins_emp_group_name  full FILTER_FIELD value(s), '|'-separated, e.g. 'ABC Corp|XYZ Inc'
-    dental_exists   'TRUE' / 'FALSE'
-    vision_exists   'TRUE' / 'FALSE'
+    cycle_end_date      e.g. '2026-08-31'
+    schema              target schema, e.g. 'raw_client_202609'
+    dental_exists       'TRUE' / 'FALSE'
+    vision_exists       'TRUE' / 'FALSE'
+    ins_emp_group_name  optional full FILTER_FIELD value(s), '|'-separated, e.g. 'ABC Corp|XYZ Inc';
+                        empty -> no group filter
     """
     dental_exists, vision_exists = dental_exists.upper(), vision_exists.upper()
-    condition = f"{FILTER_FIELD} in ('" + ins_emp_group_name.replace("|", "','") + "')"
+    group_filter = ""
+    if ins_emp_group_name:
+        group_filter = f"\n  and {FILTER_FIELD} in ('" + ins_emp_group_name.replace("|", "','") + "')"
     return (
         config_table_sql(schema, cycle_end_date, dental_exists, vision_exists)
         + ref_table_sql(schema)
-        + member_months_sql(schema, condition, dental_exists == "TRUE", vision_exists == "TRUE")
+        + member_months_sql(schema, group_filter, dental_exists == "TRUE", vision_exists == "TRUE")
         + grants_sql(schema)
     )
 
@@ -63,12 +66,12 @@ select ref_date from months order by 1;
 """
 
 
-def member_months_sql(schema, condition, include_dental, include_vision):
-    where = coverage_sql("med", condition)
+def member_months_sql(schema, group_filter, include_dental, include_vision):
+    where = coverage_sql("med", group_filter)
     if include_dental:
-        where += f"\nOR case when upper(c.value)='TRUE' then {coverage_sql('den', condition)} END"
+        where += f"\nOR case when upper(c.value)='TRUE' then {coverage_sql('den', group_filter)} END"
     if include_vision:
-        where += f"\nOR case when upper(d.value)='TRUE' then {coverage_sql('vis', condition)} END"
+        where += f"\nOR case when upper(d.value)='TRUE' then {coverage_sql('vis', group_filter)} END"
 
     fields = STAGE_FIELDS + ","
     return f"""
@@ -85,15 +88,14 @@ order by {fields} year,month,MM;
 """
 
 
-def coverage_sql(kind, condition):
-    """Member's <kind> (med/den/vis) coverage spans Ref_Date and matches `condition`."""
+def coverage_sql(kind, group_filter):
+    """Member's <kind> (med/den/vis) coverage spans Ref_Date, plus `group_filter` ('' = none)."""
     eff = f"nullif(nullif(a.ins_{kind}_eff_date,''),'2099-12-31')"
     term = f"coalesce(nullif(nullif(a.ins_{kind}_term_date,''),'2099-12-31'),'2099-12-31')"
     return (
         f"(\n  {eff} < {term}\n"
         f"  and (left({eff},7)||'-'||'01')::date <= cast(ref.Ref_Date as date)\n"
-        f"  and {term} >= cast(ref.Ref_Date as date)\n"
-        f"  and {condition}\n)"
+        f"  and {term} >= cast(ref.Ref_Date as date){group_filter}\n)"
     )
 
 
@@ -108,11 +110,11 @@ def interactive():
     print("=== member_month_generate : Redshift member-month script generator ===\n")
     cycle_end_date = ask("Cycle end date (e.g. 2026-08-31)")
     schema = ask("Schema name (e.g. raw_clientname_202609)")
-    ins_emp_group_name = ask(f"Name(s) for {FILTER_FIELD} (full names; separate several with |)")
+    ins_emp_group_name = input(f"Name(s) for {FILTER_FIELD} (full names; separate several with |; Enter for all): ").strip()
     dental_exists = ask_true_false("Dental data exists?")
     vision_exists = ask_true_false("Vision data exists?")
 
-    sql = member_month_generate(cycle_end_date, schema, ins_emp_group_name, dental_exists, vision_exists)
+    sql = member_month_generate(cycle_end_date, schema, dental_exists, vision_exists, ins_emp_group_name)
 
     print("\n" + "-" * 70 + "\n" + sql + "\n" + "-" * 70)
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"member_month_generate_{schema}.sql")
