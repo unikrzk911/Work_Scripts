@@ -1,4 +1,6 @@
 import os
+from contextlib import closing
+from pathlib import Path
 
 import psycopg2
 from dotenv import load_dotenv
@@ -15,49 +17,27 @@ DB_NAMES = [
 ]
 
 
-def load_sql_file(file_path):
-    with open(file_path, 'r') as file:
-        return file.read()
-
-
-def build_db_connections(db_names):
-    return [
-        {
-            "dbname": dbname,
-            "user": os.environ['REDSHIFT_USER'],
-            "password": os.environ['REDSHIFT_PASSWORD'],
-            "host": os.environ['REDSHIFT_HOST'],
-            "port": os.environ.get('REDSHIFT_PORT', '5439'),
-        }
-        for dbname in db_names
-    ]
-
-
-def execute_on_all_dbs(sql_script, db_list):
-    for db in db_list:
-        conn = None
-        cur = None
+def execute_on_all_dbs(sql, db_names):
+    credentials = {
+        "user": os.environ['REDSHIFT_USER'],
+        "password": os.environ['REDSHIFT_PASSWORD'],
+        "host": os.environ['REDSHIFT_HOST'],
+        "port": os.environ.get('REDSHIFT_PORT', '5439'),
+    }
+    for db_name in db_names:
         try:
-            print(f"Connecting to {db['dbname']}...")
-            conn = psycopg2.connect(**db)
-            cur = conn.cursor()
-            cur.execute(sql_script)
-            conn.commit()
-            print(f"✅ Function created in {db['dbname']}")
+            print(f"Connecting to {db_name}...")
+            with closing(psycopg2.connect(dbname=db_name, **credentials)) as conn, conn.cursor() as cur:
+                cur.execute(sql)
+                conn.commit()
+            print(f"✅ Executed on {db_name}")
         except Exception as e:
-            print(f"❌ Failed on {db['dbname']}: {e}")
-        finally:
-            if cur is not None:
-                cur.close()
-            if conn is not None:
-                conn.close()
+            print(f"❌ Failed on {db_name}: {e}")
 
 
 def main():
-    sql_file_path = os.environ.get('SQL_FILE_PATH', '')
-    create_function_sql = load_sql_file(sql_file_path)
-    databases = build_db_connections(DB_NAMES)
-    execute_on_all_dbs(create_function_sql, databases)
+    sql = Path(os.environ['SQL_FILE_PATH']).read_text()
+    execute_on_all_dbs(sql, DB_NAMES)
 
 
 if __name__ == "__main__":
