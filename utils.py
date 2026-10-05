@@ -33,7 +33,7 @@ def get_data(database, query):
     return pd.DataFrame(result, columns=column_names)
 
 
-def save_as_csv(df, path, filename, delimiter, quote_all=False, is_temp_file=False):
+def save_as_csv(df, path, filename, delimiter, quote_all=False):
     output_dir = Path(path)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / filename
@@ -43,10 +43,7 @@ def save_as_csv(df, path, filename, delimiter, quote_all=False, is_temp_file=Fal
     else:
         df.to_csv(output_path, sep=delimiter, index=False)
 
-    if is_temp_file:
-        print(f'File temporarily saved to location: {output_path}')
-    else:
-        print(f'{filename} saved to location: {output_path}')
+    print(f'{filename} saved to location: {output_path}')
 
 
 def combine_csvs(csv_files, out_path=None, read_sep=",", write_sep="|", add_source_cols=False):
