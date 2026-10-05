@@ -1,5 +1,6 @@
 import csv
 import os
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -86,9 +87,9 @@ def ask(label, choices=None):
 
 
 def save_sql(sql, filename):
-    """Print the SQL and save it as `filename` next to these scripts."""
+    """Print the SQL and save it as `filename` next to the script being run."""
     print("\n" + "-" * 70 + "\n" + sql + "\n" + "-" * 70)
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+    out = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), filename)
     with open(out, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(sql + "\n")
     print("\nSaved to: " + out)

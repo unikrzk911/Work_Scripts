@@ -1,3 +1,7 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # utils.py lives one folder up
 from utils import ask, grants_sql, run_interactive, save_sql
 
 STAGE_FIELDS = "ins_emp_group_name, dw_vendor_name"
