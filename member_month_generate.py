@@ -1,32 +1,11 @@
-"""
-Plain-Python replacement for the deprecated Redshift plpythonu function
-public.member_month_generate(...). Returns the same SQL script (config table,
-5-year reference table, member-month query and grants) the old UDF returned.
-
-Changes from the old UDF signature: `start` removed (no 'cycleStartDate' config
-row); `stage_fields` and `field1` hard-coded below.
-
-Run with no arguments and answer the prompts; the SQL is printed and saved next
-to this script.
-"""
-import os
-
-from import_raw import ask
+from utils import ask, grants_sql, run_interactive, save_sql
 
 STAGE_FIELDS = "ins_emp_group_name, dw_vendor_name"
 FILTER_FIELD = "ins_emp_group_name"
-REF_MONTHS = 60  # months in Ref_table_5year (cycle-end month + 59 before it)
+REF_MONTHS = 60
 
 
 def member_month_generate(cycle_end_date, schema, dental_exists, vision_exists, ins_emp_group_name=""):
-    """
-    cycle_end_date      e.g. '2026-08-31'
-    schema              target schema, e.g. 'raw_client_202609'
-    dental_exists       'TRUE' / 'FALSE'
-    vision_exists       'TRUE' / 'FALSE'
-    ins_emp_group_name  optional full FILTER_FIELD value(s), '|'-separated, e.g. 'ABC Corp|XYZ Inc';
-                        empty -> no group filter
-    """
     dental_exists, vision_exists = dental_exists.upper(), vision_exists.upper()
     group_filter = ""
     if ins_emp_group_name:
@@ -99,13 +78,6 @@ def coverage_sql(kind, group_filter):
     )
 
 
-def grants_sql(schema):
-    return f"""
-grant all on schema {schema} to group public;
-grant select,insert,update,delete on all tables in schema {schema} to group public;
-grant all on schema {schema}_external to group public;"""
-
-
 def interactive():
     print("=== member_month_generate : Redshift member-month script generator ===\n")
     cycle_end_date = ask("Cycle end date (e.g. 2026-08-31)")
@@ -116,11 +88,7 @@ def interactive():
 
     sql = member_month_generate(cycle_end_date, schema, dental_exists, vision_exists, ins_emp_group_name)
 
-    print("\n" + "-" * 70 + "\n" + sql + "\n" + "-" * 70)
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"member_month_generate_{schema}.sql")
-    with open(out, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(sql + "\n")
-    print("\nSaved to: " + out)
+    save_sql(sql, f"member_month_generate_{schema}.sql")
 
 
 def ask_true_false(question):
@@ -128,8 +96,4 @@ def ask_true_false(question):
 
 
 if __name__ == "__main__":
-    try:
-        interactive()
-        input("\nPress Enter to exit...")
-    except (KeyboardInterrupt, EOFError):
-        print("\nCancelled.")
+    run_interactive(interactive)

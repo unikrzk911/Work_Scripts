@@ -65,3 +65,39 @@ def combine_csvs(csv_files, out_path=None, read_sep=",", write_sep="|", add_sour
     if out_path:
         combined_df.to_csv(out_path, sep=write_sep, index=False)
     return combined_df
+
+
+def grants_sql(schema):
+    """Grants on <schema> and <schema>_external to group public."""
+    return f"""
+
+grant all on schema {schema} to group public;
+grant select,insert,update,delete on all tables in schema {schema} to group public;
+grant all on schema {schema}_external to group public;"""
+
+
+def ask(label, choices=None):
+    """Prompt until a non-empty answer (one of `choices`, if given) is entered."""
+    while True:
+        answer = input(label + ": ").strip()
+        if answer and (not choices or answer.upper() in choices):
+            return answer
+        print("  Enter one of: " + "/".join(choices) if choices else "  A value is required.")
+
+
+def save_sql(sql, filename):
+    """Print the SQL and save it as `filename` next to these scripts."""
+    print("\n" + "-" * 70 + "\n" + sql + "\n" + "-" * 70)
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+    with open(out, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(sql + "\n")
+    print("\nSaved to: " + out)
+
+
+def run_interactive(interactive):
+    """Run a prompt-driven script; keep the window open when double-clicked."""
+    try:
+        interactive()
+        input("\nPress Enter to exit...")
+    except (KeyboardInterrupt, EOFError):
+        print("\nCancelled.")

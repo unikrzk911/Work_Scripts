@@ -8,6 +8,8 @@ Field file: optional '#' header line, then one ';'-separated line per field:
 import os
 import re
 
+from utils import ask, grants_sql, run_interactive, save_sql
+
 NUM_ROWS = "170000"  # hard-coded 'numRows' table property, same as the original
 
 
@@ -46,7 +48,7 @@ def import_raw(date_suffix, schema_name, table_name, delimiter, has_header, loca
             + row_format(delimiter) + f" location '{location}' \n{table_props}"
             f" create or replace view {schema}.{table_name} as select *," + from_clause
         )
-    return sql + grants(schema, ext_schema)
+    return sql + grants_sql(schema)
 
 
 def read_field_lines(path):
@@ -92,14 +94,6 @@ def row_format(delimiter):
     return f"ROW FORMAT DELIMITED FIELDS TERMINATED BY '{delimiter}' LINES TERMINATED BY '\\n' \n STORED AS TEXTFILE \n"
 
 
-def grants(schema, ext_schema):
-    return (
-        f"\n\ngrant all on schema {schema} to group public;\n"
-        f"grant select,insert,update,delete on all tables in schema {schema}  to group public;\n"
-        f"grant all on schema {ext_schema}  to group public;"
-    )
-
-
 def interactive():
     print("=== import_raw : Redshift Spectrum script generator ===\n")
     date_suffix = ask("Date suffix (e.g. 202609)")
@@ -119,21 +113,7 @@ def interactive():
         print("\nERROR: " + str(exc))
         return
 
-    print("\n" + "-" * 70 + "\n" + sql + "\n" + "-" * 70)
-    # always save next to this script, e.g. cigna_202609_eligibility.sql
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"{schema_name}_{date_suffix}_{table_name}.sql")
-    with open(out, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(sql + "\n")
-    print("\nSaved to: " + out)
-
-
-def ask(label, choices=None):
-    """Prompt until a non-empty answer (one of `choices`, if given) is entered."""
-    while True:
-        answer = input(label + ": ").strip()
-        if answer and (not choices or answer.upper() in choices):
-            return answer
-        print("  Enter one of: " + "/".join(choices) if choices else "  A value is required.")
+    save_sql(sql, f"{schema_name}_{date_suffix}_{table_name}.sql")
 
 
 def ask_field_file():
@@ -166,8 +146,4 @@ def pick_file_dialog():
 
 
 if __name__ == "__main__":
-    try:
-        interactive()
-        input("\nPress Enter to exit...")
-    except (KeyboardInterrupt, EOFError):
-        print("\nCancelled.")
+    run_interactive(interactive)
