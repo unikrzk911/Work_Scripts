@@ -68,15 +68,6 @@ def combine_csvs(csv_files, out_path=None, read_sep=",", write_sep="|", add_sour
     return combined_df
 
 
-def grants_sql(schema):
-    """Grants on <schema> and <schema>_external to group public."""
-    return f"""
-
-grant all on schema {schema} to group public;
-grant select,insert,update,delete on all tables in schema {schema} to group public;
-grant all on schema {schema}_external to group public;"""
-
-
 def ask(label, choices=None):
     """Prompt until a non-empty answer (one of `choices`, if given) is entered."""
     while True:

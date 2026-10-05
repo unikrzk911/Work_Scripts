@@ -10,7 +10,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # utils.py lives one folder up
-from utils import ask, grants_sql, run_interactive, save_sql
+from utils import ask, run_interactive, save_sql
 
 NUM_ROWS = "170000"  # hard-coded 'numRows' table property, same as the original
 
@@ -51,6 +51,15 @@ def import_raw(date_suffix, schema_name, table_name, delimiter, has_header, loca
             f" create or replace view {schema}.{table_name} as select *," + from_clause
         )
     return sql + grants_sql(schema)
+
+
+def grants_sql(schema):
+    """Grants on <schema> and <schema>_external to group public."""
+    return f"""
+
+grant all on schema {schema} to group public;
+grant select,insert,update,delete on all tables in schema {schema} to group public;
+grant all on schema {schema}_external to group public;"""
 
 
 def read_field_lines(path):

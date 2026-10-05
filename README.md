@@ -6,7 +6,7 @@ A collection of personal helper scripts I use for office work — running SQL ac
 
 ```
 .
-├── utils.py                     # Shared helpers: Redshift query fetch, CSV save/combine, prompts, SQL save, grants
+├── utils.py                     # Shared helpers: Redshift query fetch, CSV save/combine, prompts, SQL save
 ├── execute_on_all_dbs.py        # Runs a .sql script against every DB in a fixed list
 ├── combine_ctl_files.py         # Concatenates .TXT files in a folder into one combined file
 ├── requirements.txt
@@ -43,7 +43,7 @@ A collection of personal helper scripts I use for office work — running SQL ac
 
 ## Scripts
 
-- **`utils.py`** — `get_data(database, query)` fetches a query result from Redshift as a DataFrame; `save_as_csv(...)` writes a DataFrame to disk; `combine_csvs(...)` merges multiple CSVs into one. Also the shared bits for the interactive SQL generators: `ask(label, choices)` (prompt until a valid answer), `save_sql(sql, filename)` (print + save the SQL next to the script being run), `grants_sql(schema)` (grants on `<schema>` and `<schema>_external` to `public`), `run_interactive(fn)` (runs a prompt-driven script and keeps the window open when double-clicked).
+- **`utils.py`** — `get_data(database, query)` fetches a query result from Redshift as a DataFrame; `save_as_csv(...)` writes a DataFrame to disk; `combine_csvs(...)` merges multiple CSVs into one. Also the shared bits for the interactive SQL generators: `ask(label, choices)` (prompt until a valid answer), `save_sql(sql, filename)` (print + save the SQL next to the script being run), `run_interactive(fn)` (runs a prompt-driven script and keeps the window open when double-clicked).
 - **`execute_on_all_dbs.py`** — loads a SQL file and executes it across a hardcoded list of database names. Update `DB_NAMES` and `SQL_FILE_PATH` (env var, optional) for your use case.
 - **`SQL Scripts/import_raw.py`** — run with no arguments and answer the prompts (date suffix, schema name, delimiter, header Y/N, S3 location, field file — paste a path or press Enter for a file picker). Generates the `create external table` in `<schema>_<date>_external`, a `create or replace view` in `<schema>_<date>` (adds `"$path" as sourcefilename`), and grants; saves it as `<schema>_<date>_<table>.sql`. The table name comes from the field file's name. Field file: optional `#` header line, then one `;`-separated line per field — `name` for delimited files, `name;datatype;length` for `FIXED` (fixed-length columns become `trim(substring(textline, start, length))`). Delimiter: `FIXED`, a single character (`tab` accepted), or 3 characters `<quote><separator><x>` (e.g. `"|"`) for quoted files via `OpenCSVSerde`. `numRows` is hardcoded to `170000`.
 - **`SQL Scripts/member_month_generate.py`** — run with no arguments and answer the prompts (cycle end date, schema, optional `ins_emp_group_name` filter — full names, `|`-separated, Enter for all — and whether dental/vision data exist). Generates SQL that creates `perm_stage1_config`, builds `Ref_table_5year` (the cycle-end month plus the 59 before it, via a recursive CTE), counts member months and subscribers per `ins_emp_group_name, dw_vendor_name`/year/month from `perm_stage_eligibility` (medical, plus dental/vision coverage when flagged), and adds grants. Saved as `member_month_generate_<schema>.sql`.

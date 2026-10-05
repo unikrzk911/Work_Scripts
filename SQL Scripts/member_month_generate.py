@@ -2,7 +2,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # utils.py lives one folder up
-from utils import ask, grants_sql, run_interactive, save_sql
+from utils import ask, run_interactive, save_sql
 
 STAGE_FIELDS = "ins_emp_group_name, dw_vendor_name"
 FILTER_FIELD = "ins_emp_group_name"
@@ -20,6 +20,15 @@ def member_month_generate(cycle_end_date, schema, dental_exists, vision_exists, 
         + member_months_sql(schema, group_filter, dental_exists == "TRUE", vision_exists == "TRUE")
         + grants_sql(schema)
     )
+
+
+def grants_sql(schema):
+    """Grants on <schema> and <schema>_external to group public."""
+    return f"""
+
+grant all on schema {schema} to group public;
+grant select,insert,update,delete on all tables in schema {schema} to group public;
+grant all on schema {schema}_external to group public;"""
 
 
 def config_table_sql(schema, cycle_end_date, dental_exists, vision_exists):
