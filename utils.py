@@ -68,6 +68,26 @@ def combine_csvs(csv_files, out_path=None, read_sep=",", write_sep="|", add_sour
     return combined_df
 
 
+def combine_txt_files(input_folder):
+    """Merge every *.TXT in `input_folder` into combined.txt, with a header per file."""
+    input_folder = Path(input_folder)
+    output_file = input_folder / "combined.txt"
+    txt_files = sorted(
+        f for f in input_folder.glob("*.TXT")
+        if f.resolve() != output_file.resolve()
+    )
+    separator = "=" * 80
+
+    with output_file.open("w", encoding="utf-8") as outfile:
+        for txt_file in txt_files:
+            print(f"Processing: {txt_file.name}")
+            outfile.write(f"{separator}\nFILE: {txt_file.name}\n{separator}\n")
+            outfile.write(txt_file.read_text(encoding="utf-8") + "\n\n")
+
+    print(f"Combined {len(txt_files)} files into {output_file}")
+    return output_file
+
+
 def ask(label, choices=None):
     """Prompt until a non-empty answer (one of `choices`, if given) is entered."""
     while True:

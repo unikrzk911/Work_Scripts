@@ -6,9 +6,8 @@ A collection of personal helper scripts I use for office work — running SQL ac
 
 ```
 .
-├── utils.py                     # Shared helpers: Redshift query fetch, CSV save/combine, prompts, SQL save
+├── utils.py                     # Shared helpers: Redshift query fetch, CSV/TXT combine, prompts, SQL save
 ├── execute_on_all_dbs.py        # Runs a .sql script against every DB in a fixed list
-├── combine_ctl_files.py         # Concatenates .TXT files in a folder into one combined file
 ├── requirements.txt
 ├── .env.example                 # Template for required environment variables
 ├── SQL Scripts/
@@ -43,9 +42,8 @@ A collection of personal helper scripts I use for office work — running SQL ac
 
 ## Scripts
 
-- **`utils.py`** — shared helpers: `get_data` (Redshift query → DataFrame), `save_as_csv`, `combine_csvs`, plus `ask` / `save_sql` / `run_interactive` for the interactive scripts.
+- **`utils.py`** — shared helpers: `get_data` (Redshift query → DataFrame), `save_as_csv`, `combine_csvs`, `combine_txt_files` (merges every `*.TXT` in a folder into `combined.txt`, with a header per file), plus `ask` / `save_sql` / `run_interactive` for the interactive scripts.
 - **`execute_on_all_dbs.py`** — runs a `.sql` file on every database in `DB_NAMES`.
-- **`combine_ctl_files.py`** — merges every `*.TXT` in `INPUT_FOLDER` into `combined.txt`, with a header per file.
 - **`SQL Scripts/import_raw.py`** — prompts for schema, delimiter, S3 location and a field file; writes the Spectrum external table, view and grants SQL. Field file: one `;`-separated line per field — `name` (delimited) or `name;datatype;length` (`FIXED`).
 - **`SQL Scripts/member_month_generate.py`** — prompts for cycle end date, schema, optional group filter and dental/vision flags; writes SQL counting member months and subscribers over the last 60 months.
 - **`HUB/generate_group_file.py`** — builds one client's group crosswalk CSV from `hub_hub_smart_sheet_crosswalk.csv`. Set the config block at the top first.
