@@ -3,21 +3,28 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # utils.py lives one folder up
 from utils import ask, run_interactive, save_sql
+from import_raw import create_schemas_sql
 
 STAGE_FIELDS = "ins_emp_group_name, dw_vendor_name"
 FILTER_FIELD = "ins_emp_group_name"
 REF_MONTHS = 60
 
 
-def member_month_generate(cycle_end_date, schema, dental_exists, vision_exists, ins_emp_group_name=""):
+def member_month_generate(cycle_end_date, source_schema, dental_exists, vision_exists, ins_emp_group_name=""):
+    """Reads <source_schema>.perm_stage_eligibility; every table it creates goes in <source_schema>_MM,
+    which (with <source_schema>_MM_external) is dropped (cascade) and recreated on each run."""
+    schema = f"{source_schema}_MM"
     dental_exists, vision_exists = dental_exists.upper(), vision_exists.upper()
     group_filter = ""
     if ins_emp_group_name:
         group_filter = f"\n  and {FILTER_FIELD} in ('" + ins_emp_group_name.replace("|", "','") + "')"
     return (
-        config_table_sql(schema, cycle_end_date, dental_exists, vision_exists)
+        f"drop schema if exists {schema} cascade;\n"
+        f"drop schema if exists {schema}_external cascade;\n\n"
+        + create_schemas_sql(schema)
+        + config_table_sql(schema, cycle_end_date, dental_exists, vision_exists)
         + ref_table_sql(schema)
-        + member_months_sql(schema, group_filter, dental_exists == "TRUE", vision_exists == "TRUE")
+        + member_months_sql(source_schema, schema, group_filter, dental_exists == "TRUE", vision_exists == "TRUE")
         + grants_sql(schema)
     )
 
@@ -32,7 +39,7 @@ grant all on schema {schema}_external to group public;"""
 
 
 def config_table_sql(schema, cycle_end_date, dental_exists, vision_exists):
-    return f"""create schema if not exists {schema};
+    return f"""
 drop table if exists {schema}.perm_stage1_config;
 
 create table {schema}.perm_stage1_config (name varchar(200), value varchar(200));
@@ -58,7 +65,7 @@ select ref_date from months order by 1;
 """
 
 
-def member_months_sql(schema, group_filter, include_dental, include_vision):
+def member_months_sql(source_schema, schema, group_filter, include_dental, include_vision):
     where = coverage_sql("med", group_filter)
     if include_dental:
         where += f"\nOR case when upper(c.value)='TRUE' then {coverage_sql('den', group_filter)} END"
@@ -68,7 +75,7 @@ def member_months_sql(schema, group_filter, include_dental, include_vision):
     fields = STAGE_FIELDS + ","
     return f"""
 SELECT distinct {fields}extract(year from Ref_Date) as year,extract(month from Ref_Date) as month,count(distinct dw_member_id) as MM,count(distinct case when mbr_relationship_class='Employee' then dw_member_id end) as subscriber
-FROM {schema}.perm_stage_eligibility a
+FROM {source_schema}.perm_stage_eligibility a
 inner join {schema}.Ref_table_5year ref on (1=1)
 left join (select value from {schema}.perm_stage1_config where name ='cycleEndDate') b ON (1=1)
 left join (select value from {schema}.perm_stage1_config where name ='dentalExists') c ON (1=1)
