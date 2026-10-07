@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) 
 from utils import ask, run_interactive, save_sql
 
 NUM_ROWS = "170000"  # hard-coded 'numRows' table property, same as the original
+SPECTRUM_IAM_ROLE = "arn:aws:iam::985867512284:role/rol_data_infra_spectrum01"
 
 
 def import_raw(date_suffix, schema_name, table_name, delimiter, has_header, location, field_file):
@@ -50,7 +51,18 @@ def import_raw(date_suffix, schema_name, table_name, delimiter, has_header, loca
             + row_format(delimiter) + f" location '{location}' \n{table_props}"
             f" create or replace view {schema}.{table_name} as select *," + from_clause
         )
-    return sql + grants_sql(schema)
+    return create_schemas_sql(schema_name, date_suffix) + "\n" + sql + grants_sql(schema)
+
+
+def create_schemas_sql(schema_name, date_suffix):
+    """External schema (and its data-catalog database) plus the Redshift schema for the views."""
+    schema = f"{schema_name}_{date_suffix}"
+    return (
+        f"create external schema if not exists {schema}_external from data catalog\n"
+        f" database '{schema_name}_{date_suffix}' iam_role '{SPECTRUM_IAM_ROLE}'\n"
+        " create external database if not exists;\n\n"
+        f"create schema if not exists {schema};\n"
+    )
 
 
 def grants_sql(schema):
