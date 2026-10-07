@@ -29,22 +29,22 @@ def import_raw(date_suffix, schema_name, table_name, delimiter, has_header, loca
         raise ValueError(f"No field definitions found in {field_file}")
 
     if delimiter.upper() == "FIXED":
-        table_columns = "\ttextline varchar(max)"
+        table_columns = "\ttextline VARCHAR(MAX)"
         view_columns = "\n" + ",\n".join(substring_columns(lines)) + ","
     else:
-        table_columns = " varchar(max),\n".join(line.split(";")[0] for line in lines) + " varchar(max)"
+        table_columns = " VARCHAR(MAX),\n".join(line.split(";")[0] for line in lines) + " VARCHAR(MAX)"
         view_columns = "*,"
 
     schema = f"{schema_name}_{date_suffix}"
     ext_table = f"{schema}_external.{table_name}"
     skip_header = ", 'skip.header.line.count'='1'" if has_header.upper() == "Y" else ""
     sql = (
-        f"create external table {ext_table} (\n{table_columns})\n"
+        f"CREATE EXTERNAL TABLE {ext_table} (\n{table_columns})\n"
         + row_format(delimiter)
-        + f"location '{location}'\n"
-        f"table properties ('numRows'='{NUM_ROWS}'{skip_header});\n\n"
-        f"create or replace view {schema}.{table_name} as select {view_columns}"
-        f'"$path" as sourcefilename from {ext_table} WITH NO SCHEMA BINDING;'
+        + f"LOCATION '{location}'\n"
+        f"TABLE PROPERTIES ('numRows'='{NUM_ROWS}'{skip_header});\n\n"
+        f"CREATE OR REPLACE VIEW {schema}.{table_name} AS SELECT {view_columns}"
+        f'"$path" AS sourcefilename FROM {ext_table} WITH NO SCHEMA BINDING;'
     )
     return create_schemas_sql(schema) + "\n" + sql + grants_sql(schema)
 
@@ -52,10 +52,10 @@ def import_raw(date_suffix, schema_name, table_name, delimiter, has_header, loca
 def create_schemas_sql(schema):
     """External schema (and its data-catalog database) plus the Redshift schema for the views."""
     return (
-        f"create external schema if not exists {schema}_external from data catalog\n"
-        f" database '{schema}' iam_role '{SPECTRUM_IAM_ROLE}'\n"
-        " create external database if not exists;\n\n"
-        f"create schema if not exists {schema};\n"
+        f"CREATE EXTERNAL SCHEMA IF NOT EXISTS {schema}_external FROM DATA CATALOG\n"
+        f" DATABASE '{schema}' IAM_ROLE '{SPECTRUM_IAM_ROLE}'\n"
+        " CREATE EXTERNAL DATABASE IF NOT EXISTS;\n\n"
+        f"CREATE SCHEMA IF NOT EXISTS {schema};\n"
     )
 
 
@@ -63,9 +63,9 @@ def grants_sql(schema):
     """Grants on <schema> and <schema>_external to group public."""
     return f"""
 
-grant all on schema {schema} to group public;
-grant select,insert,update,delete on all tables in schema {schema} to group public;
-grant all on schema {schema}_external to group public;"""
+GRANT ALL ON SCHEMA {schema} TO GROUP public;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA {schema} TO GROUP public;
+GRANT ALL ON SCHEMA {schema}_external TO GROUP public;"""
 
 
 def read_field_lines(path):
@@ -92,7 +92,7 @@ def substring_columns(lines):
         if len(parts) < 3 or not parts[2].strip().isdigit():
             raise ValueError(f"Fixed-length field file needs 'name;datatype;length' on every line, got: {line!r}")
         name, length = parts[0], int(parts[2])
-        columns.append(f"\ttrim(substring(textline,{start},{length})) as {name}")
+        columns.append(f"\tTRIM(SUBSTRING(textline,{start},{length})) AS {name}")
         start += length
     return columns
 
