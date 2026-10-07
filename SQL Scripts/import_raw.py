@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # utils.py lives one folder up
 from utils import ask, run_interactive, save_sql
 
-NUM_ROWS = "170000"  # hard-coded 'numRows' table property, same as the original
+NUM_ROWS = "170000"  # 'numRows' table property; a fixed estimate, not the real row count
 SPECTRUM_IAM_ROLE = "arn:aws:iam::985867512284:role/rol_data_infra_spectrum01"
 
 
@@ -20,7 +20,7 @@ def import_raw(date_suffix, schema_name, table_name, delimiter, has_header, loca
     """
     delimiter  'FIXED' for fixed-length files, else the field delimiter.
                3 characters = <quote><separator><x> (OpenCSVSerde), e.g. '"|"'.
-    has_header 'Y' adds 'skip.header.line.count'='1'
+    has_header True adds 'skip.header.line.count'='1'
     table_name '' -> use the field file's name
     """
     table_name = table_name or table_name_from_file(field_file)
@@ -37,7 +37,7 @@ def import_raw(date_suffix, schema_name, table_name, delimiter, has_header, loca
 
     schema = f"{schema_name}_{date_suffix}"
     ext_table = f"{schema}_external.{table_name}"
-    skip_header = ", 'skip.header.line.count'='1'" if has_header.upper() == "Y" else ""
+    skip_header = ", 'skip.header.line.count'='1'" if has_header else ""
     sql = (
         f"CREATE EXTERNAL TABLE {ext_table} (\n{table_columns})\n"
         + row_format(delimiter)
@@ -46,7 +46,7 @@ def import_raw(date_suffix, schema_name, table_name, delimiter, has_header, loca
         f"CREATE OR REPLACE VIEW {schema}.{table_name} AS SELECT {view_columns}"
         f'"$path" AS sourcefilename FROM {ext_table} WITH NO SCHEMA BINDING;'
     )
-    return create_schemas_sql(schema) + "\n" + sql + grants_sql(schema)
+    return create_schemas_sql(schema) + "\n" + sql + "\n" + grants_sql(schema)
 
 
 def create_schemas_sql(schema):
@@ -62,7 +62,6 @@ def create_schemas_sql(schema):
 def grants_sql(schema):
     """Grants on <schema> and <schema>_external to group public."""
     return f"""
-
 GRANT ALL ON SCHEMA {schema} TO GROUP public;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA {schema} TO GROUP public;
 GRANT ALL ON SCHEMA {schema}_external TO GROUP public;"""
@@ -120,7 +119,7 @@ def interactive():
     delimiter = ask('Delimiter (FIXED for fixed-length; otherwise e.g. |  ,  tab  or 3 chars like "|" for quoted)')
     if delimiter.lower() in ("tab", "\\t"):
         delimiter = "\t"
-    has_header = ask("Has header row? Y/N", choices=("Y", "N"))
+    has_header = ask("Has header row? Y/N", choices=("Y", "N")).upper() == "Y"
     location = ask("S3 location (e.g. s3://bucket/folder/)")
     field_file = ask_field_file()
     table_name = table_name_from_file(field_file)

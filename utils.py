@@ -106,32 +106,8 @@ def save_sql(sql, filename):
 
 
 def run_interactive(interactive):
-    """Run a prompt-driven script again and again until the user presses Esc (Ctrl+C also quits)."""
+    """Run a prompt-driven script once; Ctrl+C cancels it."""
     try:
-        while True:
-            interactive()
-            if wants_exit():
-                break
-            print()
+        interactive()
     except (KeyboardInterrupt, EOFError):
         print("\nCancelled.")
-
-
-def wants_exit():
-    """Windows console: Esc exits, any other key continues.
-    Elsewhere (PyCharm Run window, piped input, macOS) keys can't be read one at a time,
-    so it reads a line: q or Esc then Enter exits, Enter alone continues."""
-    try:
-        import msvcrt
-        single_key = sys.stdin.isatty()
-    except ImportError:
-        single_key = False
-    if not single_key:
-        return input("\nPress Enter to generate another script, or type q and Enter to exit: ").strip().lower() in ("q", "\x1b")
-
-    print("\nPress Esc to exit, or any other key to generate another script... ", end="", flush=True)
-    key = msvcrt.getwch()
-    print()
-    if key == "\x03":  # getwch swallows Ctrl+C
-        raise KeyboardInterrupt
-    return key == "\x1b"
