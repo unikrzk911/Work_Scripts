@@ -29,32 +29,42 @@ def import_raw(date_suffix, schema_name, table_name, delimiter, has_header, loca
         raise ValueError(f"No field definitions found in {field_file}")
 
     if delimiter.upper() == "FIXED":
-        table_columns = "\ttextline VARCHAR(MAX)"
-        view_columns = "\n" + ",\n".join(substring_columns(lines)) + ","
+        table_columns = ["textline VARCHAR(MAX)"]
+        view_columns = substring_columns(lines)
     else:
-        table_columns = " VARCHAR(MAX),\n".join(line.split(";")[0] for line in lines) + " VARCHAR(MAX)"
-        view_columns = "*,"
+        table_columns = [line.split(";")[0] + " VARCHAR(MAX)" for line in lines]
+        view_columns = ["*"]
+    view_columns.append('"$path" AS sourcefilename')
 
     schema = f"{schema_name}_{date_suffix}"
     ext_table = f"{schema}_external.{table_name}"
-    skip_header = ", 'skip.header.line.count'='1'" if has_header else ""
+    skip_header = ", 'skip.header.line.count' = '1'" if has_header else ""
     sql = (
-        f"CREATE EXTERNAL TABLE {ext_table} (\n{table_columns})\n"
+        f"CREATE EXTERNAL TABLE {ext_table} (\n{indented_list(table_columns)}\n)\n"
         + row_format(delimiter)
         + f"LOCATION '{location}'\n"
-        f"TABLE PROPERTIES ('numRows'='{NUM_ROWS}'{skip_header});\n\n"
-        f"CREATE OR REPLACE VIEW {schema}.{table_name} AS SELECT {view_columns}"
-        f'"$path" AS sourcefilename FROM {ext_table} WITH NO SCHEMA BINDING;'
+        f"TABLE PROPERTIES ('numRows' = '{NUM_ROWS}'{skip_header});\n\n"
+        f"CREATE OR REPLACE VIEW {schema}.{table_name} AS\n"
+        f"SELECT\n{indented_list(view_columns)}\n"
+        f"FROM {ext_table}\n"
+        "WITH NO SCHEMA BINDING;\n"
     )
-    return create_schemas_sql(schema) + "\n" + sql + "\n" + grants_sql(schema)
+    return create_schemas_sql(schema) + "\n" + sql + grants_sql(schema)
+
+
+def indented_list(items):
+    """One item per line, indented, comma-separated."""
+    return ",\n".join("    " + item for item in items)
 
 
 def create_schemas_sql(schema):
     """External schema (and its data-catalog database) plus the Redshift schema for the views."""
     return (
-        f"CREATE EXTERNAL SCHEMA IF NOT EXISTS {schema}_external FROM DATA CATALOG\n"
-        f" DATABASE '{schema}' IAM_ROLE '{SPECTRUM_IAM_ROLE}'\n"
-        " CREATE EXTERNAL DATABASE IF NOT EXISTS;\n\n"
+        f"CREATE EXTERNAL SCHEMA IF NOT EXISTS {schema}_external\n"
+        "FROM DATA CATALOG\n"
+        f"DATABASE '{schema}'\n"
+        f"IAM_ROLE '{SPECTRUM_IAM_ROLE}'\n"
+        "CREATE EXTERNAL DATABASE IF NOT EXISTS;\n\n"
         f"CREATE SCHEMA IF NOT EXISTS {schema};\n"
     )
 
@@ -91,7 +101,7 @@ def substring_columns(lines):
         if len(parts) < 3 or not parts[2].strip().isdigit():
             raise ValueError(f"Fixed-length field file needs 'name;datatype;length' on every line, got: {line!r}")
         name, length = parts[0], int(parts[2])
-        columns.append(f"\tTRIM(SUBSTRING(textline,{start},{length})) AS {name}")
+        columns.append(f"TRIM(SUBSTRING(textline, {start}, {length})) AS {name}")
         start += length
     return columns
 
@@ -99,17 +109,23 @@ def substring_columns(lines):
 def row_format(delimiter):
     """ROW FORMAT clause: FIXED = one text line per row; 3 chars = quoted CSV via OpenCSVSerde."""
     if delimiter.upper() == "FIXED":
-        return "ROW FORMAT DELIMITED LINES TERMINATED BY '\\n'\nSTORED AS TEXTFILE\n"
+        return "ROW FORMAT DELIMITED\n    LINES TERMINATED BY '\\n'\nSTORED AS TEXTFILE\n"
     if len(delimiter) == 3:
         quote, separator = delimiter[0], delimiter[1]
         return (
             "ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'\n"
             "WITH SERDEPROPERTIES (\n"
-            f"\t'separatorChar' = '{separator}',\n"
-            f"\t'quoteChar' = '{quote}'\n"
-            ") STORED AS TEXTFILE\n"
+            f"    'separatorChar' = '{separator}',\n"
+            f"    'quoteChar' = '{quote}'\n"
+            ")\n"
+            "STORED AS TEXTFILE\n"
         )
-    return f"ROW FORMAT DELIMITED FIELDS TERMINATED BY '{delimiter}' LINES TERMINATED BY '\\n'\nSTORED AS TEXTFILE\n"
+    return (
+        "ROW FORMAT DELIMITED\n"
+        f"    FIELDS TERMINATED BY '{delimiter}'\n"
+        "    LINES TERMINATED BY '\\n'\n"
+        "STORED AS TEXTFILE\n"
+    )
 
 
 def interactive():

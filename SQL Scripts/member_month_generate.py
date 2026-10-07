@@ -19,7 +19,7 @@ def member_month_generate(cycle_end_date, source_schema, include_dental, include
     return (
         drop_schemas_sql(mm_schema)
         + create_schemas_sql(mm_schema)
-        + config_table_sql(mm_schema, cycle_end_date, include_dental, include_vision)
+        + config_table_sql(mm_schema, cycle_end_date)
         + ref_table_sql(mm_schema)
         + member_months_sql(source_schema, mm_schema, group_filter, include_dental, include_vision)
         + grants_sql(mm_schema)
@@ -37,13 +37,11 @@ def drop_schemas_sql(schema):
     return f"DROP SCHEMA IF EXISTS {schema} CASCADE;\nDROP SCHEMA IF EXISTS {schema}_external CASCADE;\n\n"
 
 
-def config_table_sql(schema, cycle_end_date, include_dental, include_vision):
+def config_table_sql(schema, cycle_end_date):
     return f"""
 DROP TABLE IF EXISTS {schema}.perm_stage1_config;
 CREATE TABLE {schema}.perm_stage1_config (name VARCHAR(200), value VARCHAR(200));
 INSERT INTO {schema}.perm_stage1_config VALUES ('cycleEndDate', '{cycle_end_date}');
-INSERT INTO {schema}.perm_stage1_config VALUES ('dentalExists', '{str(include_dental).upper()}');
-INSERT INTO {schema}.perm_stage1_config VALUES ('visionExists', '{str(include_vision).upper()}');
 """
 
 
