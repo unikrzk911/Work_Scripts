@@ -27,3 +27,6 @@ HUB/HUB_Crosswalk_20251001.xlsx
 HUB/HUB_Crosswalks/
 HUB/division_plan_config.xlsx
 Requirements/
+
+# Generated SQL (save_sql output)
+Generated scripts/

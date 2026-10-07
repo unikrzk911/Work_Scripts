@@ -95,9 +95,11 @@ def ask(label, choices=None):
 
 
 def save_sql(sql, filename):
-    """Print the SQL and save it as `filename` next to the script being run."""
+    """Print the SQL and save it as `filename` in a 'Generated scripts' folder next to the script being run."""
     print("\n" + "-" * 70 + "\n" + sql + "\n" + "-" * 70)
-    out = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), filename)
+    folder = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "Generated scripts")
+    os.makedirs(folder, exist_ok=True)
+    out = os.path.join(folder, filename)
     with open(out, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(sql + "\n")
     print("\nSaved to: " + out)

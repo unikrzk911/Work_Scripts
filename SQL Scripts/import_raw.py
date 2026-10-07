@@ -1,6 +1,6 @@
 """Generate the Redshift Spectrum script (external table, view, grants) for a raw file.
 
-Run with no arguments and answer the prompts; the SQL is printed and saved next to this script.
+Run with no arguments and answer the prompts; the SQL is printed and saved to 'Generated scripts' next to this script.
 Field file: optional '#' header line, then one ';'-separated line per field:
   delimited  -> name[;...]
   FIXED      -> name;datatype;length
@@ -28,38 +28,32 @@ def import_raw(date_suffix, schema_name, table_name, delimiter, has_header, loca
     if not lines:
         raise ValueError(f"No field definitions found in {field_file}")
 
-    schema = f"{schema_name}_{date_suffix}"
-    ext_schema = f"{schema}_external"
-    header = ", 'skip.header.line.count'='1'" if has_header.upper() == "Y" else ""
-    table_props = f"table properties ('numRows'='{NUM_ROWS}'{header}); \n"
-    from_clause = f'"$path" as sourcefilename from {ext_schema}.{table_name} WITH NO SCHEMA BINDING;'
-
     if delimiter.upper() == "FIXED":
-        sql = (
-            f"create external table {ext_schema}.{table_name} (\n\ttextline varchar(max))\n"
-            "ROW FORMAT DELIMITED LINES TERMINATED BY '\\n' \n"
-            "STORED AS TEXTFILE \n"
-            f"location '{location}' \n{table_props}\n"
-            f"create or replace view {schema}.{table_name} as select \n"
-            + ",\n".join(substring_columns(lines)) + "," + from_clause
-        )
+        table_columns = "\ttextline varchar(max)"
+        view_columns = "\n" + ",\n".join(substring_columns(lines)) + ","
     else:
-        names = [line.split(";")[0] for line in lines]
-        sql = (
-            f"create external table {ext_schema}.{table_name} (\n"
-            + " varchar(max),\n".join(names) + " varchar(max))\n"
-            + row_format(delimiter) + f" location '{location}' \n{table_props}"
-            f" create or replace view {schema}.{table_name} as select *," + from_clause
-        )
-    return create_schemas_sql(schema_name, date_suffix) + "\n" + sql + grants_sql(schema)
+        table_columns = " varchar(max),\n".join(line.split(";")[0] for line in lines) + " varchar(max)"
+        view_columns = "*,"
 
-
-def create_schemas_sql(schema_name, date_suffix):
-    """External schema (and its data-catalog database) plus the Redshift schema for the views."""
     schema = f"{schema_name}_{date_suffix}"
+    ext_table = f"{schema}_external.{table_name}"
+    skip_header = ", 'skip.header.line.count'='1'" if has_header.upper() == "Y" else ""
+    sql = (
+        f"create external table {ext_table} (\n{table_columns})\n"
+        + row_format(delimiter)
+        + f"location '{location}'\n"
+        f"table properties ('numRows'='{NUM_ROWS}'{skip_header});\n\n"
+        f"create or replace view {schema}.{table_name} as select {view_columns}"
+        f'"$path" as sourcefilename from {ext_table} WITH NO SCHEMA BINDING;'
+    )
+    return create_schemas_sql(schema) + "\n" + sql + grants_sql(schema)
+
+
+def create_schemas_sql(schema):
+    """External schema (and its data-catalog database) plus the Redshift schema for the views."""
     return (
         f"create external schema if not exists {schema}_external from data catalog\n"
-        f" database '{schema_name}_{date_suffix}' iam_role '{SPECTRUM_IAM_ROLE}'\n"
+        f" database '{schema}' iam_role '{SPECTRUM_IAM_ROLE}'\n"
         " create external database if not exists;\n\n"
         f"create schema if not exists {schema};\n"
     )
@@ -104,7 +98,9 @@ def substring_columns(lines):
 
 
 def row_format(delimiter):
-    """ROW FORMAT clause for a delimited file; 3 chars = quoted CSV via OpenCSVSerde."""
+    """ROW FORMAT clause: FIXED = one text line per row; 3 chars = quoted CSV via OpenCSVSerde."""
+    if delimiter.upper() == "FIXED":
+        return "ROW FORMAT DELIMITED LINES TERMINATED BY '\\n'\nSTORED AS TEXTFILE\n"
     if len(delimiter) == 3:
         quote, separator = delimiter[0], delimiter[1]
         return (
@@ -112,9 +108,9 @@ def row_format(delimiter):
             "WITH SERDEPROPERTIES (\n"
             f"\t'separatorChar' = '{separator}',\n"
             f"\t'quoteChar' = '{quote}'\n"
-            " ) STORED AS TEXTFILE \n"
+            ") STORED AS TEXTFILE\n"
         )
-    return f"ROW FORMAT DELIMITED FIELDS TERMINATED BY '{delimiter}' LINES TERMINATED BY '\\n' \n STORED AS TEXTFILE \n"
+    return f"ROW FORMAT DELIMITED FIELDS TERMINATED BY '{delimiter}' LINES TERMINATED BY '\\n'\nSTORED AS TEXTFILE\n"
 
 
 def interactive():
