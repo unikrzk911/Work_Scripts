@@ -8,8 +8,8 @@ def load_division_plan_config(config_path):
         config_path, sheet_name=['Divisions', 'Plans', 'Updated Standard Values'],
         dtype=str, keep_default_na=False, na_values=[''],
     )
-    divisions_df = sheets['Divisions'].dropna(how='all')
-    plans_df = sheets['Plans'].dropna(how='all')
+    divisions_df = sheets['Divisions'].dropna(how='all').reset_index(drop=True)
+    plans_df = sheets['Plans'].dropna(how='all').reset_index(drop=True)
     updated_standard_values = sheets['Updated Standard Values']
     return divisions_df, plans_df, updated_standard_values
 

@@ -53,67 +53,58 @@ LOA_COLUMNS = [
 
 
 def load_division_plan_config(config_path):
-    divisions_df = pd.read_excel(config_path, sheet_name='Divisions')
-    plans_df = pd.read_excel(config_path, sheet_name='Plans')
+    sheets = pd.read_excel(
+        config_path, sheet_name=['Divisions', 'Plans'],
+        dtype=str, keep_default_na=False, na_values=[''],
+    )
+    divisions_df = sheets['Divisions'].dropna(how='all').reset_index(drop=True)
+    plans_df = sheets['Plans'].dropna(how='all').reset_index(drop=True)
     return divisions_df, plans_df
 
 
 def build_plan_crosswalk(group_id, group_name, plans_df):
-    plan_ids = plans_df['plan_id'].tolist()
     return pd.DataFrame({
-        'Key': [f"{group_id}-{plan_id}" for plan_id in plan_ids],
+        'Key': group_id + '-' + plans_df['plan_id'],
         'Group ID': group_id,
         'Group Name': group_name,
-        'Plan ID': plan_ids,
-        'Plan Description': plans_df['plan_description'].tolist(),
-        'Plan Type': plans_df['plan_type'].tolist(),
+        'Plan ID': plans_df['plan_id'],
+        'Plan Description': plans_df['plan_description'],
+        'Plan Type': plans_df['plan_type'],
     })
 
 
 def build_division_crosswalk(group_id, group_name, divisions_df):
-    division_ids = divisions_df['division_id'].tolist()
-    division_crosswalk = pd.DataFrame({
-        'Key': [f"{group_id}-{division_id}" for division_id in division_ids],
+    return pd.DataFrame({
+        'Key': group_id + '-' + divisions_df['division_id'],
         'Group ID': group_id,
         'Group Name': group_name,
-        'Division ID': division_ids,
-        'Division Name': divisions_df['division_name'].tolist(),
+        'Division ID': divisions_df['division_id'],
+        'Division Name': divisions_df['division_name'],
         'Division Type': 'Unspecified',
-    })
-    division_crosswalk.drop_duplicates(inplace=True)
-    return division_crosswalk
+    }).drop_duplicates()
 
 
-def build_employee_status_crosswalk(group_id, group_name, divisions_df, plan_crosswalk, division_crosswalk,
-                                     has_same_plan_division_id, employee_type_map):
-    df_plan = pd.DataFrame({'plan_id': plan_crosswalk['Plan ID'].tolist()})
-    df_division = pd.DataFrame({
-        'division_id': divisions_df['division_id'].tolist(),
-        'employee_status': divisions_df['employee_status'].tolist(),
-    })
+def build_employee_status_crosswalk(group_id, group_name, divisions_df, plans_df,
+                                    has_same_plan_division_id, employee_type_map):
+    df_plan = plans_df[['plan_id']]
+    df_division = divisions_df[['division_id', 'employee_status']]
 
     # When divisions and plans share the same ID space, pair each division with the plan
     # of matching ID; otherwise fall back to a full cross join (every division x every plan).
     if has_same_plan_division_id:
-        df_plan['Key'] = plan_crosswalk['Plan ID']
-        df_division['Key'] = division_crosswalk['Division ID']
+        rows = pd.merge(df_division, df_plan, left_on='division_id', right_on='plan_id')
     else:
-        df_plan['Key'] = 1
-        df_division['Key'] = 1
+        rows = pd.merge(df_division, df_plan, how='cross')
 
-    employee_status_crosswalk = pd.merge(df_division, df_plan, on='Key')
-    employee_status_crosswalk['group_id'] = group_id
-    employee_status_crosswalk['group_name'] = group_name
-    employee_status_crosswalk['Key'] = (
-        group_id + '-' + employee_status_crosswalk['division_id'] + '-' + employee_status_crosswalk['plan_id']
-    )
-    employee_status_crosswalk['employee_type'] = employee_status_crosswalk['employee_status'].map(employee_type_map)
-
-    employee_status_crosswalk = employee_status_crosswalk[
-        ['Key', 'group_id', 'group_name', 'division_id', 'plan_id', 'employee_status', 'employee_type']
-    ]
-    employee_status_crosswalk.drop_duplicates(inplace=True)
-    return employee_status_crosswalk
+    return pd.DataFrame({
+        'Key': group_id + '-' + rows['division_id'] + '-' + rows['plan_id'],
+        'group_id': group_id,
+        'group_name': group_name,
+        'division_id': rows['division_id'],
+        'plan_id': rows['plan_id'],
+        'employee_status': rows['employee_status'],
+        'employee_type': rows['employee_status'].map(employee_type_map),
+    }).drop_duplicates()
 
 
 def build_loa_crosswalk(employee_status_crosswalk, plan_crosswalk, division_crosswalk, match_field,
@@ -186,8 +177,7 @@ def main():
         group_id=GROUP_ID,
         group_name=GROUP_NAME,
         divisions_df=divisions_df,
-        plan_crosswalk=plan_crosswalk,
-        division_crosswalk=division_crosswalk,
+        plans_df=plans_df,
         has_same_plan_division_id=HAS_SAME_PLAN_DIVISION_ID,
         employee_type_map=EMPLOYEE_TYPE_MAP,
     )

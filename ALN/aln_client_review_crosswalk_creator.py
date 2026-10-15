@@ -29,7 +29,7 @@ EMPLOYEE_TYPE_MAP = {
     'Post-65 Retiree': 'Full Time',
     'Pre-65 Retiree': 'Full Time',
     'Retiree': 'Full Time',
-    'COBRA': 'COBRA',
+    'Cobra': 'COBRA',
     'Unspecified': 'Unspecified',
 }
 
@@ -55,7 +55,7 @@ def build_division_crosswalk(group_id, group_name, divisions_df):
 
 def build_employee_status_crosswalk(group_id, group_name, divisions_df, plans_df,
                                     has_same_plan_division_id, employee_type_map):
-    df_plan = pd.DataFrame({'plan_id': plans_df['plan_id']})
+    df_plan = plans_df[['plan_id']]
     df_division = divisions_df[['division_id', 'employee_status']]
 
     # When divisions and plans share the same ID space, pair each division with the plan
