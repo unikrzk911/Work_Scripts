@@ -6,11 +6,11 @@ from utils import save_as_csv
 
 # Files go to 'Generated Crosswalks/<GROUP_NAME>/' next to this script; both folders are created if missing.
 SAVE_PATH = Path(__file__).parent / 'Generated Crosswalks'
-FILE_PREFIX = 'hub_hbi_rcdsales_anthem'
+FILE_PREFIX = 'hub_hbi_NeyraIndustries_anthem'
 
-MATCH_FIELD = 'L09058'
-GROUP_ID = '4064345'
-GROUP_NAME = 'RCD SALES'
+MATCH_FIELD = 'L13933'
+GROUP_ID = '4629908'
+GROUP_NAME = 'NEYRA INDUSTRIES'
 
 # Division and plan lists come from an Excel file instead of being typed in here.
 # Expected workbook layout:
