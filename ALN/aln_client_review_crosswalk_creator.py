@@ -61,17 +61,17 @@ def build_employee_status_crosswalk(group_id, group_name, divisions_df, plans_df
     # When divisions and plans share the same ID space, pair each division with the plan
     # of matching ID; otherwise fall back to a full cross join (every division x every plan).
     if has_same_plan_division_id:
-        rows = pd.merge(df_division, df_plan, left_on='division_id', right_on='plan_id')
+        df = pd.merge(df_division, df_plan, left_on='division_id', right_on='plan_id')
     else:
-        rows = pd.merge(df_division, df_plan, how='cross')
+        df = pd.merge(df_division, df_plan, how='cross')
 
     return pd.DataFrame({
         'GroupID': group_id,
         'GroupName': group_name,
-        'DivisionID': rows['division_id'],
-        'PlanID': rows['plan_id'],
-        'EmployeeStatus': rows['employee_status'],
-        'EmployeeType': rows['employee_status'].map(employee_type_map),
+        'DivisionID': df['division_id'],
+        'PlanID': df['plan_id'],
+        'EmployeeStatus': df['employee_status'],
+        'EmployeeType': df['employee_status'].map(employee_type_map),
     }).drop_duplicates()
 
 

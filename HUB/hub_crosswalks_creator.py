@@ -92,70 +92,56 @@ def build_employee_status_crosswalk(group_id, group_name, divisions_df, plans_df
     # When divisions and plans share the same ID space, pair each division with the plan
     # of matching ID; otherwise fall back to a full cross join (every division x every plan).
     if has_same_plan_division_id:
-        rows = pd.merge(df_division, df_plan, left_on='division_id', right_on='plan_id')
+        df = pd.merge(df_division, df_plan, left_on='division_id', right_on='plan_id')
     else:
-        rows = pd.merge(df_division, df_plan, how='cross')
+        df = pd.merge(df_division, df_plan, how='cross')
 
     return pd.DataFrame({
-        'Key': group_id + '-' + rows['division_id'] + '-' + rows['plan_id'],
+        'Key': group_id + '-' + df['division_id'] + '-' + df['plan_id'],
         'group_id': group_id,
         'group_name': group_name,
-        'division_id': rows['division_id'],
-        'plan_id': rows['plan_id'],
-        'employee_status': rows['employee_status'],
-        'employee_type': rows['employee_status'].map(employee_type_map),
+        'division_id': df['division_id'],
+        'plan_id': df['plan_id'],
+        'employee_status': df['employee_status'],
+        'employee_type': df['employee_status'].map(employee_type_map),
     }).drop_duplicates()
 
 
 def build_loa_crosswalk(employee_status_crosswalk, plan_crosswalk, division_crosswalk, match_field,
                          reserved_field_9, start_date, end_date, carrier, loa_columns):
-    loa_crosswalk = pd.DataFrame({
-        'reserved_field_6': employee_status_crosswalk['Key'],
-        'employee_status_code': employee_status_crosswalk['employee_status'],
-        'reserved_field_2': employee_status_crosswalk['employee_type'],
-    })
-
-    loa_crosswalk[['ins_emp_group_id', 'division_id', 'plan_id']] = (
-        loa_crosswalk['reserved_field_6'].str.split('-', expand=True)
+    # Look up plan and division details for every employee status row.
+    df = employee_status_crosswalk.merge(
+        plan_crosswalk[['Plan ID', 'Plan Description', 'Plan Type']], left_on='plan_id', right_on='Plan ID', how='left'
+    ).merge(
+        division_crosswalk[['Division ID', 'Division Name']], left_on='division_id', right_on='Division ID', how='left'
     )
-    loa_crosswalk['reserved_field_4'] = loa_crosswalk['ins_emp_group_id'] + '-' + loa_crosswalk['plan_id']
-    loa_crosswalk['reserved_field_5'] = loa_crosswalk['ins_emp_group_id'] + '-' + loa_crosswalk['division_id']
-    loa_crosswalk['match_field'] = match_field + '`' + loa_crosswalk['division_id'] + '`' + loa_crosswalk['plan_id']
-    loa_crosswalk.drop(['division_id', 'plan_id'], axis=1, inplace=True)
 
-    plan_info = plan_crosswalk[['Key', 'Plan Description', 'Plan Type']]
-    division_info = division_crosswalk[['Key', 'Group Name', 'Division Name']]
-
-    loa_crosswalk = pd.merge(
-        loa_crosswalk, plan_info, left_on=['reserved_field_4'], right_on=['Key'], how='left'
-    ).drop(['Key'], axis=1)
-    loa_crosswalk = pd.merge(
-        loa_crosswalk, division_info, left_on=['reserved_field_5'], right_on=['Key'], how='left'
-    ).drop(['Key'], axis=1)
-
-    loa_crosswalk.rename(columns={
-        'Group Name': 'ins_emp_group_name',
-        'Plan Description': 'ins_plan_desc',
-        'Plan Type': 'ins_plan_type_desc',
-        'Division Name': 'ins_division_name',
-    }, inplace=True)
-
-    loa_crosswalk['reserved_field_9'] = reserved_field_9
-    loa_crosswalk['ins_division_id'] = loa_crosswalk['ins_division_name']
-    loa_crosswalk['ins_plan_type_code'] = loa_crosswalk['ins_plan_type_desc']
-    loa_crosswalk['ins_plan_id'] = loa_crosswalk['ins_plan_desc']
-    loa_crosswalk['employee_status_desc'] = loa_crosswalk['employee_status_code']
-    loa_crosswalk['reserved_field_3'] = loa_crosswalk['reserved_field_2']
-    loa_crosswalk['start_date'] = start_date
-    loa_crosswalk['end_date'] = end_date
-    loa_crosswalk['dw_file_type'] = 'Account Structure'
-    loa_crosswalk['ins_carrier_id'] = carrier
-    loa_crosswalk['ins_carrier_name'] = carrier
-
-    dummy_loa = pd.DataFrame(columns=loa_columns)
-    loa_crosswalk = pd.concat([dummy_loa, loa_crosswalk])
-    loa_crosswalk.drop_duplicates(inplace=True)
-    return loa_crosswalk
+    loa_crosswalk = pd.DataFrame({
+        'match_field': match_field + '`' + df['division_id'] + '`' + df['plan_id'],
+        'start_date': start_date,
+        'end_date': end_date,
+        'dw_file_type': 'Account Structure',
+        'ins_carrier_id': carrier,
+        'ins_carrier_name': carrier,
+        'ins_emp_group_id': df['group_id'],
+        'ins_emp_group_name': df['group_name'],
+        'ins_division_id': df['Division Name'],
+        'ins_division_name': df['Division Name'],
+        'ins_plan_type_code': df['Plan Type'],
+        'ins_plan_type_desc': df['Plan Type'],
+        'ins_plan_id': df['Plan Description'],
+        'ins_plan_desc': df['Plan Description'],
+        'employee_status_code': df['employee_status'],
+        'employee_status_desc': df['employee_status'],
+        'reserved_field_2': df['employee_type'],
+        'reserved_field_3': df['employee_type'],
+        'reserved_field_4': df['group_id'] + '-' + df['plan_id'],
+        'reserved_field_5': df['group_id'] + '-' + df['division_id'],
+        'reserved_field_6': df['Key'],
+        'reserved_field_9': reserved_field_9,
+    })
+    # Add the remaining LOA columns (left blank) and put everything in file order.
+    return loa_crosswalk.reindex(columns=loa_columns).drop_duplicates()
 
 
 def main():
