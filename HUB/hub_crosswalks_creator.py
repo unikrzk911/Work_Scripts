@@ -4,8 +4,8 @@ import pandas as pd
 from utils import save_as_csv
 
 
-# Only the parent folder goes here; the client-specific subfolder is created automatically from GROUP_NAME below.
-PARENT_SAVE_PATH = 'C:/Users/lenovo/OneDrive/Documents/CGT Files/Team E/'
+# Files go to 'Generated Crosswalks/<GROUP_NAME>/' next to this script; both folders are created if missing.
+SAVE_PATH = Path(__file__).parent / 'Generated Crosswalks'
 FILE_PREFIX = 'hub_hbi_rcdsales_anthem'
 
 MATCH_FIELD = 'L09058'
@@ -18,7 +18,7 @@ GROUP_NAME = 'RCD SALES'
 #   'Plans' sheet:     plan_id | plan_description | plan_type
 DIVISION_PLAN_CONFIG_PATH = Path(__file__).parent / 'division_plan_config.xlsx'
 
-HAS_SAME_PLAN_DIVISION_ID = True
+HAS_SAME_PLAN_DIVISION_ID = False
 
 START_DATE = '2015-01-01'
 END_DATE = '2026-12-31'
@@ -168,7 +168,7 @@ def build_loa_crosswalk(employee_status_crosswalk, plan_crosswalk, division_cros
 
 
 def main():
-    save_path = f'{PARENT_SAVE_PATH}{GROUP_NAME}/'
+    save_path = SAVE_PATH / GROUP_NAME
     plan_filename = FILE_PREFIX + '_plancrosswalk_01012026.csv'
     division_filename = FILE_PREFIX + '_divisioncrosswalk_01012026.csv'
     employee_status_filename = FILE_PREFIX + '_employeestatuscrosswalk_01012026.csv'

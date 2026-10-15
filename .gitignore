@@ -26,7 +26,11 @@ HUB/hub_hub_smart_sheet_crosswalk.csv
 HUB/HUB_Crosswalk_20251001.xlsx
 HUB/HUB_Crosswalks/
 HUB/division_plan_config.xlsx
+ALN/division_plan_config.xlsx
 Requirements/
 
 # Generated SQL (save_sql output)
 Generated scripts/
+
+# Generated crosswalks (client data)
+Generated Crosswalks/
